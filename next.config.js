@@ -1,8 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    appDir: true,
+    serverComponentsHmrCache: false,
   },
 }
 
 module.exports = nextConfig
+
