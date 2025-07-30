@@ -43,12 +43,12 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) in your browser to play!
 
 ## Features
-- ** Smart Scoring **: Lower scores are better - challenge yourself!
-- ** Personal Bests **: Track your best score with localStorage persistence
-- ** Learning Mode **: See optimal choices after each round
-- ** Responsive Design **: Works on desktop, tablet, and mobile
-- ** Visual Feedback **: Color-coded rankings and smooth animations
-- ** Help System **: Built-in game info and strategy tips
-- ** Quick Restart **: Reset button for instant new games
+- **Smart Scoring**: Lower scores are better - challenge yourself!
+- **Personal Bests**: Track your best score with localStorage persistence
+- **Learning Mode**: See optimal choices after each round
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **Visual Feedback**: Color-coded rankings and smooth animations
+- **Help System**: Built-in game info and strategy tips
+- **Quick Restart**: Reset button for instant new games
 
 **Enjoy the game and learn something new about US states!** 
