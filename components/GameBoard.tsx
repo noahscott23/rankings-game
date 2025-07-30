@@ -12,6 +12,8 @@ interface GameState {
   gameComplete: boolean;
   isSpinning: boolean;
   bestScore: number | null;
+  showOptimalChoice: { show: boolean; optimal: string; optimalRank: number; chosen: string; chosenRank: number } | null;
+  showInfo: boolean;
 }
 
 export default function GameBoard() {
@@ -26,12 +28,14 @@ export default function GameBoard() {
     gameComplete: false,
     isSpinning: false,
     bestScore: null,
+    showOptimalChoice: null,
+    showInfo: false,
   });
 
   // Load best score from localStorage on component mount
   useEffect(() => {
     const savedBestScore = localStorage.getItem('stateGameBestScore');
-    console.log('Loading best score from localStorage:', savedBestScore); // Debug log
+    console.log('Loading best score from localStorage:', savedBestScore);
     if (savedBestScore) {
       setGameState(prev => ({
         ...prev,
@@ -39,6 +43,20 @@ export default function GameBoard() {
       }));
     }
   }, []);
+
+  // Auto-dismiss notification after 3 seconds
+  useEffect(() => {
+    if (gameState.showOptimalChoice?.show) {
+      const timer = setTimeout(() => {
+        setGameState(prev => ({
+          ...prev,
+          showOptimalChoice: null
+        }));
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.showOptimalChoice?.show]);
 
   const startGame = () => {
     setGameState({
@@ -56,6 +74,18 @@ export default function GameBoard() {
 
     const rank = gameState.currentState.rankings[categoryId as keyof State['rankings']];
     
+    // Find the optimal choice among available categories
+    let optimalCategory = categoryId;
+    let optimalRank = rank;
+    
+    gameState.availableCategories.forEach(availableCategory => {
+      const availableRank = gameState.currentState!.rankings[availableCategory.id as keyof State['rankings']];
+      if (availableRank < optimalRank) {
+        optimalCategory = availableCategory.id;
+        optimalRank = availableRank;
+      }
+    });
+
     const newPlacements = {
       ...gameState.placements,
       [categoryId]: { 
@@ -72,6 +102,15 @@ export default function GameBoard() {
       totalScore += placement.rank;
     });
 
+    // Show optimal choice popup if player didn't choose optimally
+    const showOptimal = optimalCategory !== categoryId ? {
+      show: true,
+      optimal: categories.find(c => c.id === optimalCategory)?.name || '',
+      optimalRank,
+      chosen: category.name,
+      chosenRank: rank
+    } : null;
+
     // Start spinning if there are more categories
     if (newAvailableCategories.length > 0) {
       setGameState({
@@ -80,15 +119,15 @@ export default function GameBoard() {
         availableCategories: newAvailableCategories,
         score: totalScore,
         isSpinning: true,
+        showOptimalChoice: showOptimal,
       });
     } else {
-      // Game complete - check and save best score
+      // Game complete
       const isNewBest = gameState.bestScore === null || totalScore < gameState.bestScore;
       const newBestScore = isNewBest ? totalScore : gameState.bestScore;
       
       if (isNewBest) {
         localStorage.setItem('stateGameBestScore', totalScore.toString());
-        console.log('Saving new best score:', totalScore); // Debug log
       }
       
       setGameState({
@@ -98,15 +137,16 @@ export default function GameBoard() {
         score: totalScore,
         gameComplete: true,
         bestScore: newBestScore,
+        showOptimalChoice: showOptimal,
       });
     }
   };
 
-  // Spinning effect
+  // Spinning effect - don't auto-dismiss notification
   useEffect(() => {
     if (gameState.isSpinning) {
       let spinCount = 0;
-      const maxSpins = 5; // More spins for faster cycling
+      const maxSpins = 10;
       
       const spinInterval = setInterval(() => {
         setGameState(prev => ({
@@ -123,7 +163,7 @@ export default function GameBoard() {
             currentState: getRandomState(),
           }));
         }
-      }, 50); // Faster cycling - every 50ms
+      }, 50);
 
       return () => clearInterval(spinInterval);
     }
@@ -184,10 +224,141 @@ export default function GameBoard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      {/* Optimal Choice Notification - Side Panel */}
+      {gameState.showOptimalChoice?.show && (
+        <div className="fixed top-20 right-4 bg-white p-4 rounded-lg shadow-lg w-64 border-l-4 border-orange-500 z-50 animate-in slide-in-from-right duration-300">
+          <h3 className="text-sm font-bold mb-2 text-gray-800">Better Option Available!</h3>
+          <p className="text-xs mb-1">
+            You chose: <span className="font-semibold text-red-600">{gameState.showOptimalChoice.chosen}</span> (#{gameState.showOptimalChoice.chosenRank})
+          </p>
+          <p className="text-xs">
+            Best pick: <span className="font-semibold text-green-600">{gameState.showOptimalChoice.optimal}</span> (#{gameState.showOptimalChoice.optimalRank})
+          </p>
+        </div>
+      )}
+
+      {/* Info Modal */}
+      {gameState.showInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold text-gray-800">🇺🇸 Game Info</h2>
+                <button
+                  onClick={() => setGameState(prev => ({ ...prev, showInfo: false }))}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">How to Play</h3>
+                  <p className="text-gray-600 mb-2">
+                    For each state that appears, choose the category where that state ranks BEST (lowest number = best ranking).
+                  </p>
+                  <p className="text-gray-600">
+                    Your goal is to get the lowest total score possible across all 8 categories.
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Categories Explained</h3>
+                  <div className="grid gap-3">
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <span className="text-2xl">🌇</span>
+                      <div>
+                        <h4 className="font-semibold">Population</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Most populated state</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <span className="text-2xl">📏</span>
+                      <div>
+                        <h4 className="font-semibold">Small Size</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Smallest land area</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <span className="text-2xl">🌲</span>
+                      <div>
+                        <h4 className="font-semibold">Protected Land</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Highest % of protected land</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <span className="text-2xl">🌡️</span>
+                      <div>
+                        <h4 className="font-semibold">Temperature</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Highest average temperature</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <span className="text-2xl">👮</span>
+                      <div>
+                        <h4 className="font-semibold">Crime</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Highest crime rate (most dangerous)</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <span className="text-2xl">💰</span>
+                      <div>
+                        <h4 className="font-semibold">Cost of Living</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Highest cost of living (most expensive)</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <span className="text-2xl">🏥</span>
+                      <div>
+                        <h4 className="font-semibold">Public Health</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Best public health outcomes</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <span className="text-2xl">⛪</span>
+                      <div>
+                        <h4 className="font-semibold">Religion</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Highest religious adherence rate</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold text-blue-800 mb-2">💡 Strategy Tip</h4>
+                  <p className="text-blue-700 text-sm">
+                    Look for categories where the current state has a very low rank number (like #1, #2, #3) - these will give you the best score!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-          🇺🇸 State Ranking Challenge
-        </h1>
+        <div className="relative">
+          <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
+            🇺🇸 State Ranking Challenge
+          </h1>
+          
+          {/* Info button - always visible */}
+          <button
+            onClick={() => setGameState(prev => ({ ...prev, showInfo: true }))}
+            className="absolute top-0 right-0 bg-white p-2 rounded-full shadow-lg hover:shadow-xl transition-all"
+            title="Game Info"
+          >
+            <span className="text-xl">ℹ️</span>
+          </button>
+        </div>
         
         {!gameState.gameStarted ? (
           <div className="text-center mb-8">
@@ -273,11 +444,6 @@ export default function GameBoard() {
     </div>
   );
 }
-
-
-
-
-
 
 
 
