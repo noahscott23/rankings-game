@@ -172,55 +172,156 @@ export default function GameBoard() {
   if (gameState.gameComplete) {
     const isNewBest = gameState.bestScore === gameState.score;
     
+    // Calculate truly optimal placements using greedy assignment
+    const stateEntries = Object.entries(gameState.placements);
+    const usedCategories = new Set<string>();
+    const optimalPlacements: Array<{
+      stateName: string;
+      actualCategory: string;
+      actualRank: number;
+      optimalCategory: string;
+      optimalRank: number;
+      difference: number;
+    }> = [];
+    
+    // Create array of all possible state-category combinations with their ranks
+    const allOptions: Array<{
+      stateName: string;
+      categoryId: string;
+      categoryName: string;
+      rank: number;
+      actualCategory: string;
+      actualRank: number;
+    }> = [];
+    
+    stateEntries.forEach(([categoryId, placement]) => {
+      const state = states.find(s => s.name === placement.stateName);
+      const actualCategory = categories.find(c => c.id === categoryId);
+      
+      if (state && actualCategory) {
+        Object.entries(state.rankings).forEach(([cat, rank]) => {
+          const categoryName = categories.find(c => c.id === cat)?.name || '';
+          allOptions.push({
+            stateName: placement.stateName,
+            categoryId: cat,
+            categoryName,
+            rank,
+            actualCategory: actualCategory.name,
+            actualRank: placement.rank
+          });
+        });
+      }
+    });
+    
+    // Sort by rank (best first) and assign greedily
+    allOptions.sort((a, b) => a.rank - b.rank);
+    
+    const assignedStates = new Set<string>();
+    
+    for (const option of allOptions) {
+      if (!usedCategories.has(option.categoryId) && !assignedStates.has(option.stateName)) {
+        usedCategories.add(option.categoryId);
+        assignedStates.add(option.stateName);
+        
+        optimalPlacements.push({
+          stateName: option.stateName,
+          actualCategory: option.actualCategory,
+          actualRank: option.actualRank,
+          optimalCategory: option.categoryName,
+          optimalRank: option.rank,
+          difference: option.actualRank - option.rank
+        });
+      }
+    }
+    
+    const optimalScore = optimalPlacements.reduce((sum, p) => sum + p.optimalRank, 0);
+    
     return (
       <div className="min-h-screen p-4" style={{
         background: 'linear-gradient(135deg, #3b82f6, #1e40af)'
       }}>
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-4xl font-bold mb-8 text-white">
             🎉 Game Complete!
           </h1>
           
-          <div className="bg-white p-8 rounded-xl shadow-lg">
-            <h2 className="text-3xl font-semibold mb-4">
-              Final Score: {gameState.score}
-              {isNewBest && <span className="text-green-600 ml-2">🎉 New Best!</span>}
-            </h2>
-            {gameState.bestScore !== null && !isNewBest && (
-              <p className="text-lg text-gray-500 mb-2">
-                Best Score: {gameState.bestScore}
-              </p>
-            )}
-            <p className="text-lg text-gray-600 mb-6">
-              Lower scores are better!
-            </p>
-            
-            <div className="space-y-2 mb-6">
-              {Object.entries(gameState.placements)
-                .sort(([, a], [, b]) => a.rank - b.rank)
-                .map(([categoryId, placement]) => {
-                  const category = categories.find(c => c.id === categoryId);
-                  let textColor = '';
-                  if (placement.rank <= 10) textColor = 'text-green-600';
-                  else if (placement.rank <= 25) textColor = 'text-yellow-600';
-                  else if (placement.rank <= 40) textColor = 'text-orange-600';
-                  else textColor = 'text-red-600';
-                  
-                  return (
-                    <div key={categoryId} className={`text-sm font-medium ${textColor}`}>
-                      {category?.name}: {placement.stateName} - #{placement.rank}
-                    </div>
-                  );
-                })}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Your Results */}
+            <div className="bg-white p-8 rounded-xl shadow-lg">
+              <h2 className="text-3xl font-semibold mb-4">
+                Your Score: {gameState.score}
+                {isNewBest && <span className="text-green-600 ml-2">🎉 New Best!</span>}
+              </h2>
+              {gameState.bestScore !== null && !isNewBest && (
+                <p className="text-lg text-gray-500 mb-2">
+                  Best Score: {gameState.bestScore}
+                </p>
+              )}
+              
+              <div className="space-y-2 mb-6">
+                <h3 className="font-semibold text-gray-700 mb-3">Your Choices:</h3>
+                {Object.entries(gameState.placements)
+                  .sort(([, a], [, b]) => a.rank - b.rank)
+                  .map(([categoryId, placement]) => {
+                    const category = categories.find(c => c.id === categoryId);
+                    let textColor = '';
+                    if (placement.rank <= 10) textColor = 'text-green-600';
+                    else if (placement.rank <= 25) textColor = 'text-yellow-600';
+                    else if (placement.rank <= 40) textColor = 'text-orange-600';
+                    else textColor = 'text-red-600';
+                    
+                    return (
+                      <div key={categoryId} className={`text-sm font-medium ${textColor}`}>
+                        {category?.name}: {placement.stateName} - #{placement.rank}
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
-            
-            <button 
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700"
-            >
-              Play Again
-            </button>
+
+            {/* Optimal Strategy */}
+            <div className="bg-green-50 p-8 rounded-xl shadow-lg border-2 border-green-200">
+              <h2 className="text-3xl font-semibold mb-4 text-green-800">
+                Optimal Score: {optimalScore}
+              </h2>
+              <p className="text-lg text-green-600 mb-4">
+                You could have saved {gameState.score - optimalScore} points!
+              </p>
+              
+              <div className="space-y-2 mb-6">
+                <h3 className="font-semibold text-green-700 mb-3">Optimal Choices:</h3>
+                {optimalPlacements
+                  .sort((a, b) => a.optimalRank - b.optimalRank)
+                  .map((placement, index) => {
+                    let textColor = '';
+                    if (placement.optimalRank <= 10) textColor = 'text-green-600';
+                    else if (placement.optimalRank <= 25) textColor = 'text-yellow-600';
+                    else if (placement.optimalRank <= 40) textColor = 'text-orange-600';
+                    else textColor = 'text-red-600';
+                    
+                    return (
+                      <div key={index} className="text-sm">
+                        <div className={`font-medium ${textColor}`}>
+                          {placement.optimalCategory}: {placement.stateName} - #{placement.optimalRank}
+                        </div>
+                        {placement.difference > 0 && (
+                          <div className="text-xs text-gray-500 ml-2">
+                            (You chose {placement.actualCategory} - #{placement.actualRank}, +{placement.difference} points)
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
           </div>
+          
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-white text-blue-600 px-8 py-3 rounded-lg hover:bg-gray-50 border-2 border-blue-600 mt-8 font-semibold"
+          >
+            Play Again
+          </button>
         </div>
       </div>
     );
@@ -356,14 +457,24 @@ export default function GameBoard() {
             State Ranking Challenge
           </h1>
           
-          {/* Info button - always visible */}
-          <button
-            onClick={() => setGameState(prev => ({ ...prev, showInfo: true }))}
-            className="absolute top-0 right-0 bg-white p-2 rounded-full shadow-lg hover:shadow-xl transition-all"
-            title="Game Info"
-          >
-            <span className="text-xl">ℹ️</span>
-          </button>
+          {/* Info and Reset buttons */}
+          <div className="absolute top-0 right-0 flex flex-col gap-2">
+            <button
+              onClick={() => setGameState(prev => ({ ...prev, showInfo: true }))}
+              className="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-16 h-16 flex items-center justify-center"
+              title="Game Info"
+            >
+              <span className="text-2xl">ℹ️</span>
+            </button>
+            
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-16 h-16 flex items-center justify-center"
+              title="Reset Game"
+            >
+              <span className="text-2xl">🔄</span>
+            </button>
+          </div>
         </div>
         
         {!gameState.gameStarted ? (
@@ -483,6 +594,12 @@ export default function GameBoard() {
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
