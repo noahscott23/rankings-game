@@ -173,10 +173,12 @@ export default function GameBoard() {
     const isNewBest = gameState.bestScore === gameState.score;
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen p-4" style={{
+        background: 'linear-gradient(135deg, #3b82f6, #1e40af)'
+      }}>
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl font-bold mb-8 text-gray-800">
-            🇺🇸 Game Complete!
+          <h1 className="text-4xl font-bold mb-8 text-white">
+            🎉 Game Complete!
           </h1>
           
           <div className="bg-white p-8 rounded-xl shadow-lg">
@@ -194,20 +196,22 @@ export default function GameBoard() {
             </p>
             
             <div className="space-y-2 mb-6">
-              {Object.entries(gameState.placements).map(([categoryId, placement]) => {
-                const category = categories.find(c => c.id === categoryId);
-                let textColor = '';
-                if (placement.rank <= 10) textColor = 'text-green-600';
-                else if (placement.rank <= 25) textColor = 'text-yellow-600';
-                else if (placement.rank <= 40) textColor = 'text-orange-600';
-                else textColor = 'text-red-600';
-                
-                return (
-                  <div key={categoryId} className={`text-sm font-medium ${textColor}`}>
-                    {category?.name}: {placement.stateName} - #{placement.rank}
-                  </div>
-                );
-              })}
+              {Object.entries(gameState.placements)
+                .sort(([, a], [, b]) => a.rank - b.rank)
+                .map(([categoryId, placement]) => {
+                  const category = categories.find(c => c.id === categoryId);
+                  let textColor = '';
+                  if (placement.rank <= 10) textColor = 'text-green-600';
+                  else if (placement.rank <= 25) textColor = 'text-yellow-600';
+                  else if (placement.rank <= 40) textColor = 'text-orange-600';
+                  else textColor = 'text-red-600';
+                  
+                  return (
+                    <div key={categoryId} className={`text-sm font-medium ${textColor}`}>
+                      {category?.name}: {placement.stateName} - #{placement.rank}
+                    </div>
+                  );
+                })}
             </div>
             
             <button 
@@ -223,7 +227,9 @@ export default function GameBoard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen p-4" style={{
+      background: 'linear-gradient(135deg, #3b82f6, #1e40af)'
+    }}>
       {/* Optimal Choice Notification - Side Panel */}
       {gameState.showOptimalChoice?.show && (
         <div className="fixed top-20 right-4 bg-white p-4 rounded-lg shadow-lg w-64 border-l-4 border-orange-500 z-50 animate-in slide-in-from-right duration-300">
@@ -243,7 +249,7 @@ export default function GameBoard() {
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">🇺🇸 Game Info</h2>
+                <h2 className="text-2xl font-bold text-gray-800">Game Info</h2>
                 <button
                   onClick={() => setGameState(prev => ({ ...prev, showInfo: false }))}
                   className="text-gray-500 hover:text-gray-700 text-2xl"
@@ -309,8 +315,8 @@ export default function GameBoard() {
                     <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                       <span className="text-2xl">💰</span>
                       <div>
-                        <h4 className="font-semibold">Cost of Living</h4>
-                        <p className="text-sm text-gray-600">Rank #1 = Highest cost of living (most expensive)</p>
+                        <h4 className="font-semibold">Lowest Cost of Living</h4>
+                        <p className="text-sm text-gray-600">Rank #1 = Lowest cost of living (cheapest)</p>
                       </div>
                     </div>
                     
@@ -346,8 +352,8 @@ export default function GameBoard() {
 
       <div className="max-w-6xl mx-auto">
         <div className="relative">
-          <h1 className="text-4xl font-bold text-center mb-8 text-gray-800">
-            🇺🇸 State Ranking Challenge
+          <h1 className="text-4xl font-bold text-center mb-8 text-white">
+            State Ranking Challenge
           </h1>
           
           {/* Info button - always visible */}
@@ -364,28 +370,56 @@ export default function GameBoard() {
           <div className="text-center mb-8">
             <button 
               onClick={startGame}
-              className="bg-blue-600 text-white px-12 py-4 rounded-lg hover:bg-blue-700 text-xl font-semibold shadow-lg mb-4"
+              className="bg-white text-blue-600 px-12 py-4 rounded-lg hover:bg-gray-50 text-xl font-semibold shadow-lg mb-4"
             >
               Start Game
             </button>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-white">
               Choose the category where each state ranks best (lowest number).
             </p>
             {gameState.bestScore !== null && (
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-blue-100 mt-2">
                 Best Score: {gameState.bestScore}
               </p>
             )}
           </div>
         ) : (
           <div className="text-center mb-8">
-            <h2 className={`text-3xl font-bold mb-4 transition-all ${gameState.isSpinning ? 'animate-pulse' : ''}`}>
-              <span className="text-blue-600">{gameState.currentState?.name}</span>
-            </h2>
-            <p className="text-sm text-gray-500">
-              Categories remaining: {gameState.availableCategories.length} | Current Score: {gameState.score}
-              {gameState.bestScore !== null ? ` | Best Score: ${gameState.bestScore}` : ' | Best Score: --'}
-            </p>
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 max-w-md mx-auto mb-6">
+              <h2 className={`text-3xl font-bold mb-3 transition-all text-gray-800 ${gameState.isSpinning ? 'animate-pulse' : ''}`}>
+                {gameState.currentState?.flag.startsWith('/') ? (
+                  <div className="flex flex-col items-center">
+                    <img 
+                      src={gameState.currentState.flag} 
+                      alt={`${gameState.currentState.name} flag`}
+                      className="w-16.8 h-10 mb-2 object-cover"
+                    />
+                    {gameState.currentState?.name}
+                  </div>
+                ) : (
+                  <>
+                    <span className="mr-2">{gameState.currentState?.flag}</span>
+                    {gameState.currentState?.name}
+                  </>
+                )}
+              </h2>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Categories Remaining:</span>
+                  <span className="font-semibold text-blue-600">{gameState.availableCategories.length}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Current Score:</span>
+                  <span className="font-semibold text-orange-600">{gameState.score}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Best Score:</span>
+                  <span className="font-semibold text-green-600">
+                    {gameState.bestScore !== null ? gameState.bestScore : '--'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -400,17 +434,17 @@ export default function GameBoard() {
             if (isUsed) {
               const rank = isUsed.rank;
               if (rank <= 10) {
-                buttonStyle = 'bg-green-100 border-green-500';
-                textStyle = 'text-green-700';
+                buttonStyle = 'bg-green-200 border-green-600';
+                textStyle = 'text-green-800';
               } else if (rank <= 25) {
-                buttonStyle = 'bg-yellow-100 border-yellow-500';
-                textStyle = 'text-yellow-700';
+                buttonStyle = 'bg-yellow-200 border-yellow-600';
+                textStyle = 'text-yellow-800';
               } else if (rank <= 40) {
-                buttonStyle = 'bg-orange-100 border-orange-500';
-                textStyle = 'text-orange-700';
+                buttonStyle = 'bg-orange-200 border-orange-600';
+                textStyle = 'text-orange-800';
               } else {
-                buttonStyle = 'bg-red-100 border-red-500';
-                textStyle = 'text-red-700';
+                buttonStyle = 'bg-red-200 border-red-600';
+                textStyle = 'text-red-800';
               }
             } else if (isAvailable && gameState.gameStarted) {
               buttonStyle = 'bg-white hover:shadow-xl hover:border-blue-300 border-transparent';
@@ -431,6 +465,11 @@ export default function GameBoard() {
                 <h3 className="font-semibold text-gray-800">{category.name}</h3>
                 {isUsed ? (
                   <p className={`text-sm mt-1 font-medium ${textStyle}`}>
+                    <img 
+                      src={`/${isUsed.stateName.toLowerCase().replace(' ', '-')}.png`}
+                      alt={`${isUsed.stateName} flag`}
+                      className="inline w-10 h-8 mr-1 object-cover"
+                    />
                     {isUsed.stateName}: #{isUsed.rank}
                   </p>
                 ) : (
@@ -444,11 +483,6 @@ export default function GameBoard() {
     </div>
   );
 }
-
-
-
-
-
 
 
 
