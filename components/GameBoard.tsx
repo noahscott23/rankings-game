@@ -12,9 +12,19 @@ interface GameState {
   gameComplete: boolean;
   isSpinning: boolean;
   bestScore: number | null;
+  averageScore: number | null;
+  gamesPlayed: number;
   showOptimalChoice: { show: boolean; optimal: string; optimalRank: number; chosen: string; chosenRank: number } | null;
   showInfo: boolean;
 }
+
+const getScoreColor = (score: number | null) => {
+  if (score === null) return 'text-gray-600';
+  if (score <= 125) return 'text-green-600';
+  if (score <= 175) return 'text-yellow-600';
+  if (score <= 225) return 'text-orange-600';
+  return 'text-red-600';
+};
 
 export default function GameBoard() {
   const getRandomState = () => states[Math.floor(Math.random() * states.length)];
@@ -28,18 +38,24 @@ export default function GameBoard() {
     gameComplete: false,
     isSpinning: false,
     bestScore: null,
+    averageScore: null,
+    gamesPlayed: 0,
     showOptimalChoice: null,
     showInfo: false,
   });
 
-  // Load best score from localStorage on component mount
+  // Load best score and average from localStorage on component mount
   useEffect(() => {
     const savedBestScore = localStorage.getItem('stateGameBestScore');
-    console.log('Loading best score from localStorage:', savedBestScore);
+    const savedAverageScore = localStorage.getItem('stateGameAverageScore');
+    const savedGamesPlayed = localStorage.getItem('stateGameGamesPlayed');
+    
     if (savedBestScore) {
       setGameState(prev => ({
         ...prev,
-        bestScore: parseInt(savedBestScore, 10)
+        bestScore: parseInt(savedBestScore, 10),
+        averageScore: savedAverageScore ? parseFloat(savedAverageScore) : null,
+        gamesPlayed: savedGamesPlayed ? parseInt(savedGamesPlayed, 10) : 0
       }));
     }
   }, []);
@@ -126,9 +142,16 @@ export default function GameBoard() {
       const isNewBest = gameState.bestScore === null || totalScore < gameState.bestScore;
       const newBestScore = isNewBest ? totalScore : gameState.bestScore;
       
+      // Calculate new average
+      const newGamesPlayed = gameState.gamesPlayed + 1;
+      const currentTotal = (gameState.averageScore || 0) * gameState.gamesPlayed;
+      const newAverageScore = (currentTotal + totalScore) / newGamesPlayed;
+      
       if (isNewBest) {
         localStorage.setItem('stateGameBestScore', totalScore.toString());
       }
+      localStorage.setItem('stateGameAverageScore', newAverageScore.toString());
+      localStorage.setItem('stateGameGamesPlayed', newGamesPlayed.toString());
       
       setGameState({
         ...gameState,
@@ -137,6 +160,8 @@ export default function GameBoard() {
         score: totalScore,
         gameComplete: true,
         bestScore: newBestScore,
+        averageScore: newAverageScore,
+        gamesPlayed: newGamesPlayed,
         showOptimalChoice: showOptimal,
       });
     }
@@ -146,7 +171,7 @@ export default function GameBoard() {
   useEffect(() => {
     if (gameState.isSpinning) {
       let spinCount = 0;
-      const maxSpins = 10;
+      const maxSpins = 15;
       
       const spinInterval = setInterval(() => {
         setGameState(prev => ({
@@ -172,69 +197,129 @@ export default function GameBoard() {
   if (gameState.gameComplete) {
     const isNewBest = gameState.bestScore === gameState.score;
     
-    // Calculate truly optimal placements using greedy assignment
-    const stateEntries = Object.entries(gameState.placements);
-    const usedCategories = new Set<string>();
-    const optimalPlacements: Array<{
-      stateName: string;
-      actualCategory: string;
-      actualRank: number;
-      optimalCategory: string;
-      optimalRank: number;
-      difference: number;
-    }> = [];
-    
-    // Create array of all possible state-category combinations with their ranks
-    const allOptions: Array<{
-      stateName: string;
-      categoryId: string;
-      categoryName: string;
-      rank: number;
-      actualCategory: string;
-      actualRank: number;
-    }> = [];
-    
-    stateEntries.forEach(([categoryId, placement]) => {
-      const state = states.find(s => s.name === placement.stateName);
-      const actualCategory = categories.find(c => c.id === categoryId);
+    // Hungarian Algorithm implementation
+    const hungarianAlgorithm = (costMatrix: number[][]): { assignments: number[]; totalCost: number } => {
+      const n = costMatrix.length;
+      const matrix = costMatrix.map(row => [...row]); // Deep copy
       
-      if (state && actualCategory) {
-        Object.entries(state.rankings).forEach(([cat, rank]) => {
-          const categoryName = categories.find(c => c.id === cat)?.name || '';
-          allOptions.push({
-            stateName: placement.stateName,
-            categoryId: cat,
-            categoryName,
-            rank,
-            actualCategory: actualCategory.name,
-            actualRank: placement.rank
-          });
-        });
+      // Step 1: Subtract row minimums
+      for (let i = 0; i < n; i++) {
+        const rowMin = Math.min(...matrix[i]);
+        for (let j = 0; j < n; j++) {
+          matrix[i][j] -= rowMin;
+        }
       }
-    });
-    
-    // Sort by rank (best first) and assign greedily
-    allOptions.sort((a, b) => a.rank - b.rank);
-    
-    const assignedStates = new Set<string>();
-    
-    for (const option of allOptions) {
-      if (!usedCategories.has(option.categoryId) && !assignedStates.has(option.stateName)) {
-        usedCategories.add(option.categoryId);
-        assignedStates.add(option.stateName);
+      
+      // Step 2: Subtract column minimums
+      for (let j = 0; j < n; j++) {
+        const colMin = Math.min(...matrix.map(row => row[j]));
+        for (let i = 0; i < n; i++) {
+          matrix[i][j] -= colMin;
+        }
+      }
+      
+      // Step 3: Cover zeros with minimum lines (simplified approach)
+      const assignments = new Array(n).fill(-1);
+      const usedCols = new Set<number>();
+      const usedRows = new Set<number>();
+      
+      // Multiple passes to find assignments
+      let foundAssignment = true;
+      while (foundAssignment && usedCols.size < n) {
+        foundAssignment = false;
         
-        optimalPlacements.push({
-          stateName: option.stateName,
-          actualCategory: option.actualCategory,
-          actualRank: option.actualRank,
-          optimalCategory: option.categoryName,
-          optimalRank: option.rank,
-          difference: option.actualRank - option.rank
-        });
+        // Find rows/cols with only one zero
+        for (let i = 0; i < n; i++) {
+          if (usedRows.has(i)) continue;
+          
+          const availableZeros = [];
+          for (let j = 0; j < n; j++) {
+            if (matrix[i][j] === 0 && !usedCols.has(j)) {
+              availableZeros.push(j);
+            }
+          }
+          
+          if (availableZeros.length === 1) {
+            assignments[i] = availableZeros[0];
+            usedCols.add(availableZeros[0]);
+            usedRows.add(i);
+            foundAssignment = true;
+          }
+        }
+        
+        // Find columns with only one zero
+        for (let j = 0; j < n; j++) {
+          if (usedCols.has(j)) continue;
+          
+          const availableZeros = [];
+          for (let i = 0; i < n; i++) {
+            if (matrix[i][j] === 0 && !usedRows.has(i)) {
+              availableZeros.push(i);
+            }
+          }
+          
+          if (availableZeros.length === 1) {
+            const i = availableZeros[0];
+            assignments[i] = j;
+            usedCols.add(j);
+            usedRows.add(i);
+            foundAssignment = true;
+          }
+        }
       }
-    }
-    
-    const optimalScore = optimalPlacements.reduce((sum, p) => sum + p.optimalRank, 0);
+      
+      // Fallback: greedy assignment for remaining unassigned
+      for (let i = 0; i < n; i++) {
+        if (assignments[i] === -1) {
+          let bestCol = -1;
+          let bestCost = Infinity;
+          for (let j = 0; j < n; j++) {
+            if (!usedCols.has(j) && costMatrix[i][j] < bestCost) {
+              bestCost = costMatrix[i][j];
+              bestCol = j;
+            }
+          }
+          if (bestCol !== -1) {
+            assignments[i] = bestCol;
+            usedCols.add(bestCol);
+          }
+        }
+      }
+      
+      const totalCost = assignments.reduce((sum, col, row) => sum + costMatrix[row][col], 0);
+      return { assignments, totalCost };
+    };
+
+    // Calculate truly optimal placements using Hungarian Algorithm
+    const stateEntries = Object.entries(gameState.placements);
+    const stateNames = stateEntries.map(([, placement]) => placement.stateName);
+    const categoryIds = Object.keys(categories[0] ? states[0].rankings : {});
+
+    // Build cost matrix
+    const costMatrix = stateNames.map(stateName => {
+      const state = states.find(s => s.name === stateName);
+      return categoryIds.map(catId => state?.rankings[catId as keyof State['rankings']] || 999);
+    });
+
+    const { assignments, totalCost: optimalScore } = hungarianAlgorithm(costMatrix);
+
+    // Convert assignments back to readable format
+    const optimalPlacements = assignments.map((categoryIndex, stateIndex) => {
+      const stateName = stateNames[stateIndex];
+      const categoryId = categoryIds[categoryIndex];
+      const optimalCategory = categories.find(c => c.id === categoryId);
+      const actualPlacement = stateEntries.find(([, p]) => p.stateName === stateName);
+      const actualCategory = categories.find(c => c.id === actualPlacement?.[0]);
+      
+      return {
+        stateName,
+        actualCategory: actualCategory?.name || '',
+        actualRank: actualPlacement?.[1].rank || 0,
+        optimalCategory: optimalCategory?.name || '',
+        optimalRank: costMatrix[stateIndex][categoryIndex],
+        difference: (actualPlacement?.[1].rank || 0) - costMatrix[stateIndex][categoryIndex]
+      };
+    });
     
     return (
       <div className="min-h-screen p-4" style={{
@@ -489,9 +574,10 @@ export default function GameBoard() {
               Choose the category where each state ranks best (lowest number).
             </p>
             {gameState.bestScore !== null && (
-              <p className="text-sm text-blue-100 mt-2">
-                Best Score: {gameState.bestScore}
-              </p>
+              <div className="text-sm text-blue-100 mt-2 space-y-1">
+                <p>Best Score: <span className={getScoreColor(gameState.bestScore)}>{gameState.bestScore}</span></p>
+                <p>Average Score: <span className={getScoreColor(gameState.averageScore)}>{gameState.averageScore !== null ? Math.round(gameState.averageScore * 10) / 10 : '--'}</span></p>
+              </div>
             )}
           </div>
         ) : (
@@ -521,12 +607,18 @@ export default function GameBoard() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Current Score:</span>
-                  <span className="font-semibold text-orange-600">{gameState.score}</span>
+                  <span className={`font-semibold ${getScoreColor(gameState.score)}`}>{gameState.score}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Best Score:</span>
-                  <span className="font-semibold text-green-600">
+                  <span className={`font-semibold ${getScoreColor(gameState.bestScore)}`}>
                     {gameState.bestScore !== null ? gameState.bestScore : '--'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Average Score:</span>
+                  <span className={`font-semibold ${getScoreColor(gameState.averageScore)}`}>
+                    {gameState.averageScore !== null ? Math.round(gameState.averageScore * 10) / 10 : '--'}
                   </span>
                 </div>
               </div>
@@ -594,12 +686,6 @@ export default function GameBoard() {
     </div>
   );
 }
-
-
-
-
-
-
 
 
 
