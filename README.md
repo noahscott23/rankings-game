@@ -1,7 +1,7 @@
 # US States Ranking Game
 A fun and educational React game that challenges players to identify which categories US states rank best in. Test your knowledge of state statistics while learning interesting facts about America!
 
-![Game Screenshot](/states.png)
+<img src="public/states.png" alt="Game Screenshot" width="400"  />
 
 ## 🎮 How to Play
 1. **Start the Game** - Click "Start Game" to begin
@@ -42,13 +42,13 @@ npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) in your browser to play!
 
-## ✨ Features
-- **🎯 Smart Scoring**: Lower scores are better - challenge yourself!
-- **🏆 Personal Bests**: Track your best score with localStorage persistence
-- **💡 Learning Mode**: See optimal choices after each round
-- **📱 Responsive Design**: Works on desktop, tablet, and mobile
-- **🎨 Visual Feedback**: Color-coded rankings and smooth animations
-- **ℹ️ Help System**: Built-in game info and strategy tips
-- **🔄 Quick Restart**: Reset button for instant new games
+## Features
+- **Smart Scoring**: Lower scores are better - challenge yourself!
+- **Personal Bests**: Track your best score with localStorage persistence
+- **Learning Mode**: See optimal choices after each round
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **Visual Feedback**: Color-coded rankings and smooth animations
+- **Help System**: Built-in game info and strategy tips
+- **Quick Restart**: Reset button for instant new games
 
-**Enjoy the game and learn something new about US states!** 🎉
+**Enjoy the game and learn something new about US states!** 
