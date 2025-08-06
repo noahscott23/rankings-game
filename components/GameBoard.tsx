@@ -308,7 +308,7 @@ export default function GameBoard() {
       const stateName = stateNames[stateIndex];
       const categoryId = categoryIds[categoryIndex];
       const optimalCategory = categories.find(c => c.id === categoryId);
-      const actualPlacement = stateEntries.find(([, p]) => p.stateName === stateName);
+      const actualPlacement = stateEntries.find(([categoryId, p]) => p.stateName === stateName);
       const actualCategory = categories.find(c => c.id === actualPlacement?.[0]);
       
       return {
@@ -686,6 +686,7 @@ export default function GameBoard() {
     </div>
   );
 }
+
 
 
 
