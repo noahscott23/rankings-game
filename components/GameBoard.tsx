@@ -546,18 +546,18 @@ export default function GameBoard() {
           <div className="absolute top-0 right-0 flex flex-col gap-2">
             <button
               onClick={() => setGameState(prev => ({ ...prev, showInfo: true }))}
-              className="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-16 h-16 flex items-center justify-center"
+              className="bg-white p-2 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center"
               title="Game Info"
             >
-              <span className="text-2xl">ℹ️</span>
+              <span className="text-lg sm:text-2xl">ℹ️</span>
             </button>
             
             <button
               onClick={() => window.location.reload()}
-              className="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-16 h-16 flex items-center justify-center"
+              className="bg-white p-2 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center"
               title="Reset Game"
             >
-              <span className="text-2xl">🔄</span>
+              <span className="text-lg sm:text-2xl">🔄</span>
             </button>
           </div>
         </div>
@@ -582,14 +582,14 @@ export default function GameBoard() {
           </div>
         ) : (
           <div className="text-center mb-8">
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-6 max-w-md mx-auto mb-6">
-              <h2 className={`text-3xl font-bold mb-3 transition-all text-gray-800 ${gameState.isSpinning ? 'animate-pulse' : ''}`}>
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-4 sm:p-6 max-w-xs sm:max-w-md mx-auto mb-6">
+              <h2 className={`text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 transition-all text-gray-800 ${gameState.isSpinning ? 'animate-pulse' : ''}`}>
                 {gameState.currentState?.flag.startsWith('/') ? (
                   <div className="flex flex-col items-center">
                     <img 
                       src={gameState.currentState.flag} 
                       alt={`${gameState.currentState.name} flag`}
-                      className="w-16.8 h-10 mb-2 object-cover"
+                      className="w-12 h-8 sm:w-16.8 sm:h-10 mb-1 sm:mb-2 object-cover"
                     />
                     {gameState.currentState?.name}
                   </div>
@@ -600,7 +600,7 @@ export default function GameBoard() {
                   </>
                 )}
               </h2>
-              <div className="space-y-2 text-sm">
+              <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Categories Remaining:</span>
                   <span className="font-semibold text-blue-600">{gameState.availableCategories.length}</span>
@@ -626,7 +626,7 @@ export default function GameBoard() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {categories.map((category) => {
             const isUsed = gameState.placements[category.id];
             const isAvailable = gameState.availableCategories.some(c => c.id === category.id);
@@ -660,23 +660,31 @@ export default function GameBoard() {
                 key={category.id}
                 onClick={() => isAvailable && !gameState.isSpinning && gameState.gameStarted ? handlePlacement(category.id) : undefined}
                 disabled={!gameState.currentState || !isAvailable || gameState.isSpinning || !gameState.gameStarted}
-                className={`p-6 rounded-xl shadow-lg transition-all border-2 ${buttonStyle} ${
+                className={`p-2 sm:p-6 rounded-lg sm:rounded-xl shadow-lg transition-all border-2 ${buttonStyle} ${
                   isUsed ? 'cursor-default' : ''
                 } ${gameState.isSpinning ? 'opacity-75' : ''}`}
               >
-                <div className="text-4xl mb-2">{category.icon}</div>
-                <h3 className="font-semibold text-gray-800">{category.name}</h3>
+                {/* Mobile: emoji and name on one line, smaller icon, no description */}
+                <div className="flex flex-row items-center gap-2 sm:hidden">
+                  <span className="text-lg">{category.icon}</span>
+                  <span className="font-semibold text-gray-800 text-xs">{category.name}</span>
+                </div>
+                {/* Desktop: emoji above name, show description */}
+                <div className="hidden sm:flex sm:flex-col sm:items-center">
+                  <span className="text-4xl mb-2">{category.icon}</span>
+                  <h3 className="font-semibold text-gray-800 text-base">{category.name}</h3>
+                </div>
                 {isUsed ? (
-                  <p className={`text-sm mt-1 font-medium ${textStyle}`}>
+                  <p className={`text-xs sm:text-sm mt-1 font-medium ${textStyle}`}>
                     <img 
                       src={`/${isUsed.stateName.toLowerCase().replace(' ', '-')}.png`}
                       alt={`${isUsed.stateName} flag`}
-                      className="inline w-10 h-8 mr-1 object-cover"
+                      className="inline w-4 h-3 sm:w-10 sm:h-8 mr-1 object-cover"
                     />
                     {isUsed.stateName}: #{isUsed.rank}
                   </p>
                 ) : (
-                  <p className="text-sm text-gray-600 mt-1">{category.description}</p>
+                  <p className="hidden sm:block text-sm text-gray-600 mt-1">{category.description}</p>
                 )}
               </button>
             );
@@ -686,6 +694,11 @@ export default function GameBoard() {
     </div>
   );
 }
+
+
+
+
+
 
 
 
