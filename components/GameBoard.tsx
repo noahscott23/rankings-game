@@ -195,222 +195,224 @@ export default function GameBoard() {
   }, [gameState.isSpinning]);
 
   if (gameState.gameComplete) {
-    const isNewBest = gameState.bestScore === gameState.score;
-    
-    // Hungarian Algorithm implementation
-    const hungarianAlgorithm = (costMatrix: number[][]): { assignments: number[]; totalCost: number } => {
-      const n = costMatrix.length;
-      const matrix = costMatrix.map(row => [...row]); // Deep copy
-      
-      // Step 1: Subtract row minimums
-      for (let i = 0; i < n; i++) {
-        const rowMin = Math.min(...matrix[i]);
-        for (let j = 0; j < n; j++) {
-          matrix[i][j] -= rowMin;
+  const isNewBest = gameState.bestScore === gameState.score;
+
+  // --- Robust Hungarian Algorithm ---
+  const hungarianAlgorithm = (
+    costMatrix: number[][],
+    maximize = false
+  ): { assignments: number[]; totalCost: number } => {
+    const rows = costMatrix.length;
+    const cols = costMatrix[0]?.length || 0;
+    if (rows === 0 || cols === 0) return { assignments: [], totalCost: 0 };
+
+    // Convert to minimization if maximizing
+    let maxVal = -Infinity;
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        if (costMatrix[i][j] > maxVal) maxVal = costMatrix[i][j];
+      }
+    }
+    if (maxVal === -Infinity) maxVal = 0;
+
+    const n = Math.max(rows, cols); // square size
+    const INF = 1e12;
+    const a: number[][] = Array.from({ length: n + 1 }, () => Array(n + 1).fill(INF));
+
+    for (let i = 1; i <= n; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (i <= rows && j <= cols) {
+          a[i][j] = maximize ? maxVal - costMatrix[i - 1][j - 1] : costMatrix[i - 1][j - 1];
+        } else {
+          a[i][j] = INF;
         }
       }
-      
-      // Step 2: Subtract column minimums
-      for (let j = 0; j < n; j++) {
-        const colMin = Math.min(...matrix.map(row => row[j]));
-        for (let i = 0; i < n; i++) {
-          matrix[i][j] -= colMin;
+    }
+
+    const u = new Array(n + 1).fill(0);
+    const v = new Array(n + 1).fill(0);
+    const p = new Array(n + 1).fill(0);
+    const way = new Array(n + 1).fill(0);
+
+    for (let i = 1; i <= n; i++) {
+      p[0] = i;
+      let j0 = 0;
+      const minv = new Array(n + 1).fill(INF);
+      const used = new Array(n + 1).fill(false);
+
+      do {
+        used[j0] = true;
+        const i0 = p[j0];
+        let delta = INF;
+        let j1 = 0;
+        for (let j = 1; j <= n; j++) {
+          if (used[j]) continue;
+          const cur = a[i0][j] - u[i0] - v[j];
+          if (cur < minv[j]) {
+            minv[j] = cur;
+            way[j] = j0;
+          }
+          if (minv[j] < delta) {
+            delta = minv[j];
+            j1 = j;
+          }
         }
+        for (let j = 0; j <= n; j++) {
+          if (used[j]) {
+            u[p[j]] += delta;
+            v[j] -= delta;
+          } else {
+            minv[j] -= delta;
+          }
+        }
+        j0 = j1;
+      } while (p[j0] !== 0);
+
+      do {
+        const j1 = way[j0];
+        p[j0] = p[j1];
+        j0 = j1;
+      } while (j0 !== 0);
+    }
+
+    const assignment = new Array(rows).fill(-1);
+    for (let j = 1; j <= n; j++) {
+      const i = p[j];
+      if (i > 0 && i <= rows && j <= cols) {
+        assignment[i - 1] = j - 1;
       }
-      
-      // Step 3: Cover zeros with minimum lines (simplified approach)
-      const assignments = new Array(n).fill(-1);
-      const usedCols = new Set<number>();
-      const usedRows = new Set<number>();
-      
-      // Multiple passes to find assignments
-      let foundAssignment = true;
-      while (foundAssignment && usedCols.size < n) {
-        foundAssignment = false;
-        
-        // Find rows/cols with only one zero
-        for (let i = 0; i < n; i++) {
-          if (usedRows.has(i)) continue;
-          
-          const availableZeros = [];
-          for (let j = 0; j < n; j++) {
-            if (matrix[i][j] === 0 && !usedCols.has(j)) {
-              availableZeros.push(j);
-            }
-          }
-          
-          if (availableZeros.length === 1) {
-            assignments[i] = availableZeros[0];
-            usedCols.add(availableZeros[0]);
-            usedRows.add(i);
-            foundAssignment = true;
-          }
-        }
-        
-        // Find columns with only one zero
-        for (let j = 0; j < n; j++) {
-          if (usedCols.has(j)) continue;
-          
-          const availableZeros = [];
-          for (let i = 0; i < n; i++) {
-            if (matrix[i][j] === 0 && !usedRows.has(i)) {
-              availableZeros.push(i);
-            }
-          }
-          
-          if (availableZeros.length === 1) {
-            const i = availableZeros[0];
-            assignments[i] = j;
-            usedCols.add(j);
-            usedRows.add(i);
-            foundAssignment = true;
-          }
-        }
-      }
-      
-      // Fallback: greedy assignment for remaining unassigned
-      for (let i = 0; i < n; i++) {
-        if (assignments[i] === -1) {
-          let bestCol = -1;
-          let bestCost = Infinity;
-          for (let j = 0; j < n; j++) {
-            if (!usedCols.has(j) && costMatrix[i][j] < bestCost) {
-              bestCost = costMatrix[i][j];
-              bestCol = j;
-            }
-          }
-          if (bestCol !== -1) {
-            assignments[i] = bestCol;
-            usedCols.add(bestCol);
-          }
-        }
-      }
-      
-      const totalCost = assignments.reduce((sum, col, row) => sum + costMatrix[row][col], 0);
-      return { assignments, totalCost };
+    }
+
+    let totalCost = 0;
+    for (let i = 0; i < rows; i++) {
+      const j = assignment[i];
+      if (j >= 0 && j < cols) totalCost += costMatrix[i][j];
+    }
+
+    return { assignments: assignment, totalCost };
+  };
+
+  // --- Build cost matrix from game state ---
+  const categoryIds = categories.map(c => c.id);
+  const stateEntries = Object.entries(gameState.placements);
+  const stateNames = stateEntries.map(([, placement]) => placement.stateName);
+
+  const costMatrix = stateNames.map(stateName => {
+    const state = states.find(s => s.name === stateName);
+    return categoryIds.map(catId => (state ? (state.rankings[catId as keyof State['rankings']] ?? 999) : 999));
+  });
+
+  const { assignments, totalCost } = hungarianAlgorithm(costMatrix, false);
+
+  // --- Map optimal assignments back to display data ---
+  const optimalPlacements = assignments.map((categoryIndex, stateIndex) => {
+    const stateName = stateNames[stateIndex];
+    const categoryId = categoryIndex >= 0 ? categoryIds[categoryIndex] : null;
+    const optimalCategory = categories.find(c => c.id === categoryId);
+    const actualPlacementEntry = stateEntries.find(([, p]) => p.stateName === stateName);
+    const actualCategory = categories.find(c => c.id === actualPlacementEntry?.[0]);
+    const optimalRank = categoryIndex >= 0 ? costMatrix[stateIndex][categoryIndex] : null;
+    return {
+      stateName,
+      actualCategory: actualCategory?.name || '',
+      actualRank: actualPlacementEntry?.[1].rank || 0,
+      optimalCategory: optimalCategory?.name || '',
+      optimalRank,
+      difference: optimalRank !== null ? (actualPlacementEntry?.[1].rank || 0) - optimalRank : null
     };
+  });
 
-    // Calculate truly optimal placements using Hungarian Algorithm
-    const stateEntries = Object.entries(gameState.placements);
-    const stateNames = stateEntries.map(([, placement]) => placement.stateName);
-    const categoryIds = Object.keys(categories[0] ? states[0].rankings : {});
+  // --- UI ---
+  return (
+    <div className="min-h-screen p-4" style={{
+      background: 'linear-gradient(135deg, #3b82f6, #1e40af)'
+    }}>
+      <div className="max-w-6xl mx-auto text-center">
+        <h1 className="text-4xl font-bold mb-8 text-white">
+          🎉 Game Complete!
+        </h1>
 
-    // Build cost matrix
-    const costMatrix = stateNames.map(stateName => {
-      const state = states.find(s => s.name === stateName);
-      return categoryIds.map(catId => state?.rankings[catId as keyof State['rankings']] || 999);
-    });
-
-    const { assignments, totalCost: optimalScore } = hungarianAlgorithm(costMatrix);
-
-    // Convert assignments back to readable format
-    const optimalPlacements = assignments.map((categoryIndex, stateIndex) => {
-      const stateName = stateNames[stateIndex];
-      const categoryId = categoryIds[categoryIndex];
-      const optimalCategory = categories.find(c => c.id === categoryId);
-      const actualPlacement = stateEntries.find(([categoryId, p]) => p.stateName === stateName);
-      const actualCategory = categories.find(c => c.id === actualPlacement?.[0]);
-      
-      return {
-        stateName,
-        actualCategory: actualCategory?.name || '',
-        actualRank: actualPlacement?.[1].rank || 0,
-        optimalCategory: optimalCategory?.name || '',
-        optimalRank: costMatrix[stateIndex][categoryIndex],
-        difference: (actualPlacement?.[1].rank || 0) - costMatrix[stateIndex][categoryIndex]
-      };
-    });
-    
-    return (
-      <div className="min-h-screen p-4" style={{
-        background: 'linear-gradient(135deg, #3b82f6, #1e40af)'
-      }}>
-        <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-4xl font-bold mb-8 text-white">
-            🎉 Game Complete!
-          </h1>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Your Results */}
-            <div className="bg-white p-8 rounded-xl shadow-lg">
-              <h2 className="text-3xl font-semibold mb-4">
-                Your Score: {gameState.score}
-                {isNewBest && <span className="text-green-600 ml-2">🎉 New Best!</span>}
-              </h2>
-              {gameState.bestScore !== null && !isNewBest && (
-                <p className="text-lg text-gray-500 mb-2">
-                  Best Score: {gameState.bestScore}
-                </p>
-              )}
-              
-              <div className="space-y-2 mb-6">
-                <h3 className="font-semibold text-gray-700 mb-3">Your Choices:</h3>
-                {Object.entries(gameState.placements)
-                  .sort(([, a], [, b]) => a.rank - b.rank)
-                  .map(([categoryId, placement]) => {
-                    const category = categories.find(c => c.id === categoryId);
-                    let textColor = '';
-                    if (placement.rank <= 10) textColor = 'text-green-600';
-                    else if (placement.rank <= 25) textColor = 'text-yellow-600';
-                    else if (placement.rank <= 40) textColor = 'text-orange-600';
-                    else textColor = 'text-red-600';
-                    
-                    return (
-                      <div key={categoryId} className={`text-sm font-medium ${textColor}`}>
-                        {category?.name}: {placement.stateName} - #{placement.rank}
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-
-            {/* Optimal Strategy */}
-            <div className="bg-green-50 p-8 rounded-xl shadow-lg border-2 border-green-200">
-              <h2 className="text-3xl font-semibold mb-4 text-green-800">
-                Optimal Score: {optimalScore}
-              </h2>
-              <p className="text-lg text-green-600 mb-4">
-                You could have saved {gameState.score - optimalScore} points!
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Your Results */}
+          <div className="bg-white p-8 rounded-xl shadow-lg">
+            <h2 className="text-3xl font-semibold mb-4">
+              Your Score: {gameState.score}
+              {isNewBest && <span className="text-green-600 ml-2">🎉 New Best!</span>}
+            </h2>
+            {gameState.bestScore !== null && !isNewBest && (
+              <p className="text-lg text-gray-500 mb-2">
+                Best Score: {gameState.bestScore}
               </p>
-              
-              <div className="space-y-2 mb-6">
-                <h3 className="font-semibold text-green-700 mb-3">Optimal Choices:</h3>
-                {optimalPlacements
-                  .sort((a, b) => a.optimalRank - b.optimalRank)
-                  .map((placement, index) => {
-                    let textColor = '';
-                    if (placement.optimalRank <= 10) textColor = 'text-green-600';
-                    else if (placement.optimalRank <= 25) textColor = 'text-yellow-600';
-                    else if (placement.optimalRank <= 40) textColor = 'text-orange-600';
-                    else textColor = 'text-red-600';
-                    
-                    return (
-                      <div key={index} className="text-sm">
-                        <div className={`font-medium ${textColor}`}>
-                          {placement.optimalCategory}: {placement.stateName} - #{placement.optimalRank}
-                        </div>
-                        {placement.difference > 0 && (
-                          <div className="text-xs text-gray-500 ml-2">
-                            (You chose {placement.actualCategory} - #{placement.actualRank}, +{placement.difference} points)
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
+            )}
+
+            <div className="space-y-2 mb-6">
+              <h3 className="font-semibold text-gray-700 mb-3">Your Choices:</h3>
+              {Object.entries(gameState.placements)
+                .sort(([, a], [, b]) => a.rank - b.rank)
+                .map(([categoryId, placement]) => {
+                  const category = categories.find(c => c.id === categoryId);
+                  let textColor = '';
+                  if (placement.rank <= 10) textColor = 'text-green-600';
+                  else if (placement.rank <= 25) textColor = 'text-yellow-600';
+                  else if (placement.rank <= 40) textColor = 'text-orange-600';
+                  else textColor = 'text-red-600';
+
+                  return (
+                    <div key={categoryId} className={`text-sm font-medium ${textColor}`}>
+                      {category?.name}: {placement.stateName} - #{placement.rank}
+                    </div>
+                  );
+                })}
             </div>
           </div>
-          
-          <button 
-            onClick={() => window.location.reload()}
-            className="bg-white text-blue-600 px-8 py-3 rounded-lg hover:bg-gray-50 border-2 border-blue-600 mt-8 font-semibold"
-          >
-            Play Again
-          </button>
+
+          {/* Optimal Strategy */}
+          <div className="bg-green-50 p-8 rounded-xl shadow-lg border-2 border-green-200">
+            <h2 className="text-3xl font-semibold mb-4 text-green-800">
+              Optimal Score: {totalCost}
+            </h2>
+            <p className="text-lg text-green-600 mb-4">
+              You could have saved {gameState.score - totalCost} points!
+            </p>
+
+            <div className="space-y-2 mb-6">
+              <h3 className="font-semibold text-green-700 mb-3">Optimal Choices:</h3>
+              {optimalPlacements
+                .sort((a, b) => (a.optimalRank ?? Infinity) - (b.optimalRank ?? Infinity))
+                .map((placement, index) => {
+                  let textColor = '';
+                  if ((placement.optimalRank ?? Infinity) <= 10) textColor = 'text-green-600';
+                  else if ((placement.optimalRank ?? Infinity) <= 25) textColor = 'text-yellow-600';
+                  else if ((placement.optimalRank ?? Infinity) <= 40) textColor = 'text-orange-600';
+                  else textColor = 'text-red-600';
+
+                  return (
+                    <div key={index} className="text-sm">
+                      <div className={`font-medium ${textColor}`}>
+                        {placement.optimalCategory}: {placement.stateName} - #{placement.optimalRank}
+                      </div>
+                      {placement.difference !== null && placement.difference > 0 && (
+                        <div className="text-xs text-gray-500 ml-2">
+                          (You chose {placement.actualCategory} - #{placement.actualRank}, +{placement.difference} points)
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
         </div>
+
+        <button
+          onClick={() => window.location.reload()}
+          className="bg-white text-blue-600 px-8 py-3 rounded-lg hover:bg-gray-50 border-2 border-blue-600 mt-8 font-semibold"
+        >
+          Play Again
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen p-4" style={{
