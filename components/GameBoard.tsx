@@ -543,18 +543,18 @@ export default function GameBoard() {
           </h1>
           
           {/* Info and Reset buttons */}
-          <div className="absolute top-0 right-0 flex flex-col gap-2">
+          <div className="absolute top-0 right-0 flex flex-col gap-2 mt-2">
             <button
               onClick={() => setGameState(prev => ({ ...prev, showInfo: true }))}
-              className="bg-white p-2 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center"
+              className="bg-white p-1 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center"
               title="Game Info"
             >
-              <span className="text-lg sm:text-2xl">ℹ️</span>
+              <span className="text-base sm:text-2xl">ℹ️</span>
             </button>
             
             <button
               onClick={() => window.location.reload()}
-              className="bg-white p-2 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center"
+              className="bg-white sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center"
               title="Reset Game"
             >
               <span className="text-lg sm:text-2xl">🔄</span>
@@ -626,7 +626,7 @@ export default function GameBoard() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
           {categories.map((category) => {
             const isUsed = gameState.placements[category.id];
             const isAvailable = gameState.availableCategories.some(c => c.id === category.id);
@@ -664,27 +664,52 @@ export default function GameBoard() {
                   isUsed ? 'cursor-default' : ''
                 } ${gameState.isSpinning ? 'opacity-75' : ''}`}
               >
-                {/* Mobile: emoji and name on one line, smaller icon, no description */}
-                <div className="flex flex-row items-center gap-2 sm:hidden">
-                  <span className="text-lg">{category.icon}</span>
-                  <span className="font-semibold text-gray-800 text-xs">{category.name}</span>
+               {/* mobile: icon + category name left, optional flag/state right */}
+                <div className="flex justify-between items-center sm:hidden mt-1 font-medium w-full">
+                  {/* Left group: icon + category name */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-lg">{category.icon}</span>
+                    <span className="font-semibold text-gray-800 text-xs">{category.name}</span>
+                  </div>
+
+                  {/* Right group: flag + state name */}
+                  {isUsed && (
+                    <div className="flex items-center gap-1 whitespace-nowrap">
+                      <img
+                        src={`/${isUsed.stateName.toLowerCase().replace(' ', '-')}.png`}
+                        alt={`${isUsed.stateName} flag`}
+                        className="w-4 h-3 object-cover"
+                      />
+                      <span className="text-xs">
+                        {isUsed.stateName}: #{isUsed.rank}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                {/* Desktop: emoji above name, show description */}
+
+
+                {/* pc: emoji above name */}
                 <div className="hidden sm:flex sm:flex-col sm:items-center">
                   <span className="text-4xl mb-2">{category.icon}</span>
-                  <h3 className="font-semibold text-gray-800 text-base">{category.name}</h3>
+                  <h3 className="font-semibold text-gray-800 text-base">
+                    {category.name}
+                  </h3>
                 </div>
+
+                {/* pc: state info or description */}
                 {isUsed ? (
-                  <p className={`text-xs sm:text-sm mt-1 font-medium ${textStyle}`}>
-                    <img 
+                  <p className={`hidden sm:block text-sm mt-1 font-medium ${textStyle}`}>
+                    <img
                       src={`/${isUsed.stateName.toLowerCase().replace(' ', '-')}.png`}
                       alt={`${isUsed.stateName} flag`}
-                      className="inline w-4 h-3 sm:w-10 sm:h-8 mr-1 object-cover"
+                      className="inline w-10 h-8 mr-1 object-cover"
                     />
                     {isUsed.stateName}: #{isUsed.rank}
                   </p>
                 ) : (
-                  <p className="hidden sm:block text-sm text-gray-600 mt-1">{category.description}</p>
+                  <p className="hidden sm:block text-sm text-gray-600 mt-1">
+                    {category.description}
+                  </p>
                 )}
               </button>
             );
