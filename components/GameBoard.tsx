@@ -545,10 +545,10 @@ export default function GameBoard() {
           </h1>
           
           {/* Info and Reset buttons */}
-          <div className="absolute top-0 right-0 flex flex-col gap-2 mt-8">
+          <div className="absolute top-0 right-0 flex flex-col gap-2 mt-12 -mr-3">
             <button
               onClick={() => setGameState(prev => ({ ...prev, showInfo: true }))}
-              className="bg-white p-1 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-8 h-8 sm:w-16 sm:h-16 flex items-center justify-center"
+              className="bg-white p-1 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center"
               title="Game Info"
             >
               <span className="text-base sm:text-2xl">ℹ️</span>
@@ -556,7 +556,7 @@ export default function GameBoard() {
             
             <button
               onClick={() => window.location.reload()}
-              className="bg-white sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-8 h-8 sm:w-16 sm:h-16 flex items-center justify-center"
+              className="bg-white sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center"
               title="Reset Game"
             >
               <span className="text-lg sm:text-2xl">🔄</span>
