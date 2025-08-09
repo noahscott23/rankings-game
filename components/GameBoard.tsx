@@ -540,15 +540,15 @@ export default function GameBoard() {
 
       <div className="max-w-6xl mx-auto">
         <div className="relative">
-          <h1 className="text-4xl font-bold text-center mb-8 text-white">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 text-white">
             State Ranking Challenge
           </h1>
           
           {/* Info and Reset buttons */}
-          <div className="absolute top-0 right-0 flex flex-col gap-2 mt-2">
+          <div className="absolute top-0 right-0 flex flex-col gap-2 mt-8">
             <button
               onClick={() => setGameState(prev => ({ ...prev, showInfo: true }))}
-              className="bg-white p-1 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center"
+              className="bg-white p-1 sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-8 h-8 sm:w-16 sm:h-16 flex items-center justify-center"
               title="Game Info"
             >
               <span className="text-base sm:text-2xl">ℹ️</span>
@@ -556,7 +556,7 @@ export default function GameBoard() {
             
             <button
               onClick={() => window.location.reload()}
-              className="bg-white sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-10 h-10 sm:w-16 sm:h-16 flex items-center justify-center"
+              className="bg-white sm:p-3 rounded-full shadow-lg hover:shadow-xl transition-all w-8 h-8 sm:w-16 sm:h-16 flex items-center justify-center"
               title="Reset Game"
             >
               <span className="text-lg sm:text-2xl">🔄</span>
@@ -583,9 +583,9 @@ export default function GameBoard() {
             )}
           </div>
         ) : (
-          <div className="text-center mb-8">
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-4 sm:p-6 max-w-xs sm:max-w-md mx-auto mb-6">
-              <h2 className={`text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 transition-all text-gray-800 ${gameState.isSpinning ? 'animate-pulse' : ''}`}>
+          <div className="text-center mb-8 -mt-4 sm:mt-0">
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-4 sm:p-6 max-w-[18rem] sm:max-w-md mx-auto mb-4">
+              <h2 className={`text-2xl sm:text-3xl font-bold sm:mb-3 transition-all text-gray-800 ${gameState.isSpinning ? 'animate-pulse' : ''}`}>
                 {gameState.currentState?.flag.startsWith('/') ? (
                   <div className="flex flex-col items-center">
                     <img 
@@ -662,7 +662,7 @@ export default function GameBoard() {
                 key={category.id}
                 onClick={() => isAvailable && !gameState.isSpinning && gameState.gameStarted ? handlePlacement(category.id) : undefined}
                 disabled={!gameState.currentState || !isAvailable || gameState.isSpinning || !gameState.gameStarted}
-                className={`p-2 sm:p-6 rounded-lg sm:rounded-xl shadow-lg transition-all border-2 ${buttonStyle} ${
+                className={`p-1 sm:p-6 rounded-lg sm:rounded-xl shadow-lg transition-all border-2 ${buttonStyle} ${
                   isUsed ? 'cursor-default' : ''
                 } ${gameState.isSpinning ? 'opacity-75' : ''}`}
               >
